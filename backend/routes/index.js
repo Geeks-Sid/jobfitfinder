@@ -57,9 +57,15 @@ app.post('/scan', upload.single('resume'), async (req, res) => {
       throw new Error('GPT-3 API Error');
     });
 
-    const skills = gpt3Response.data.choices[0].text;
-    const extractedSkills = skills.split(',').map(skill => skill.trim());
-    res.json({ skills: extractedSkills.join(', ') });
+    // Change this line to correctly extract the skills
+    const skills = gpt3Response.data.choices[0].message.content || gpt3Response.data.choices[0].message;
+
+    if (skills) {
+      const extractedSkills = skills.split(',').map(skill => skill.trim());
+      res.json({ skills: extractedSkills.join(', ') });
+    } else {
+      throw new Error('Skills not found in API response');
+    }
   } catch (error) {
     console.error('Error processing resume:', error.message);
     res.status(500).json({ message: error.message });
