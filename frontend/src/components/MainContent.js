@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import './MainContent.css';
 import axios from 'axios';
 import FileUpload from './FileUpload';
-import ScanButton from './ScanButton';
 import ResponseBox from './ResponseBox';
 
 const MainContent = () => {
@@ -46,7 +45,12 @@ const MainContent = () => {
   return (
     <main>
       <FileUpload handleFileUpload={handleFileUpload} />
-      <ScanButton isScanning={isScanning} handleScanClick={handleScanClick} />
+      <button 
+        onClick={handleScanClick}
+        disabled={!selectedFile || isScanning}
+      >
+        {isScanning ? 'Scanning...' : 'Scan Resume'}
+      </button>
       {isScanning && <p>Scanning...</p>}
       {!isScanning && scanResponse.length > 0 && (
         <ResponseBox 
@@ -57,6 +61,12 @@ const MainContent = () => {
         />
       )}
       {!isScanning && scanResponse.length === 0 && <p>Ready to scan.</p>}
+      <button 
+        onClick={handleGenerateQuestionClick}
+        disabled={!selectedSkill}
+      >
+        Ask Questions
+      </button>
     </main>
   );
 };
