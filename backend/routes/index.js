@@ -62,7 +62,8 @@ app.post('/scan', upload.single('resume'), async (req, res) => {
 
     if (skills) {
       const extractedSkills = skills.split(',').map(skill => skill.trim());
-      res.json({ skills: extractedSkills.join(', ') });
+      console.log('Extracted skills:', extractedSkills);
+      res.json({ skills: extractedSkills });
     } else {
       throw new Error('Skills not found in API response');
     }

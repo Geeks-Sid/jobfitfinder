@@ -1,47 +1,62 @@
 import React, { useState } from 'react';
 import './MainContent.css';
 import axios from 'axios';
+import FileUpload from './FileUpload';
+import ScanButton from './ScanButton';
+import ResponseBox from './ResponseBox';
 
 const MainContent = () => {
   const [isScanning, setIsScanning] = useState(false);
-  const [scanResponse, setScanResponse] = useState(null);
-  const [formData, setFormData] = useState(null);
+  const [scanResponse, setScanResponse] = useState([]);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedSkill, setSelectedSkill] = useState('');
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
-    const newFormData = new FormData();
-    newFormData.append('resume', file);
-    setFormData(newFormData);
+    setSelectedFile(file);
   };
 
-  const handleScanClick = () => {
-    if (isScanning || !formData) return;
-    setIsScanning(true);
+  const handleScanClick = async () => {
+    if (isScanning || !selectedFile) return;
 
-    axios.post('http://localhost:3001/scan', formData)
-      .then(response => {
-        setScanResponse(response.data);
-        setIsScanning(false);
-      })
-      .catch(error => {
-        console.error(error);
-        setIsScanning(false);
-      });
+    const formData = new FormData();
+    formData.append('resume', selectedFile);
+
+    setIsScanning(true);
+    try {
+      const response = await axios.post('http://localhost:3001/scan', formData);
+      setScanResponse(response.data);
+    } catch (error) {
+      console.error('Error scanning:', error);
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const handleGenerateQuestionClick = async () => {
+    if (!selectedSkill) return;
+    try {
+      const response = await axios.post('http://localhost:3001/genque', { skill: selectedSkill });
+      console.log('Generated question:', response.data);
+    } catch (error) {
+      console.error('Error generating question:', error);
+    }
   };
 
   return (
     <main>
-      <input type="file" id="resume" name="resume" onChange={handleFileUpload} />
-      <button onClick={handleScanClick}>
-        {isScanning ? 'Scanning...' : 'Scan Resume'}
-      </button>
+      <FileUpload handleFileUpload={handleFileUpload} />
+      <ScanButton isScanning={isScanning} handleScanClick={handleScanClick} />
       {isScanning && <p>Scanning...</p>}
-      {!isScanning && scanResponse && (
-        <div className="response-box">
-          <pre>{JSON.stringify(scanResponse, null, 2)}</pre>
-        </div>
+      {!isScanning && scanResponse.length > 0 && (
+        <ResponseBox 
+          scanResponse={scanResponse} 
+          selectedSkill={selectedSkill} 
+          setSelectedSkill={setSelectedSkill} 
+          handleGenerateQuestionClick={handleGenerateQuestionClick} 
+        />
       )}
-      {!isScanning && !scanResponse && <p>Ready to scan.</p>}
+      {!isScanning && scanResponse.length === 0 && <p>Ready to scan.</p>}
     </main>
   );
 };
