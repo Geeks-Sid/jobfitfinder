@@ -42,12 +42,15 @@ app.post('/scan', upload.single('resume'), async (req, res) => {
 
   const prompt = `${process.env.SKILL_PROMPT} ${parsedText.text}`;
   const gpt3Data = {
-    prompt: prompt,
-    max_tokens: 100
+    model: "gpt-3.5-turbo",
+    messages: [
+      { role: "system", content: "You are a helpful assistant." },
+      { role: "user", content: prompt },
+    ],
   };
 
   const apiKey = process.env.OPENAI_API_KEY;
-  const apiUrl = 'https://api.openai.com/v1/engines/davinci-codex/completions';
+  const apiUrl = 'https://api.openai.com/v1/chat/completions';
 
   let skills;
   try {
@@ -61,7 +64,7 @@ app.post('/scan', upload.single('resume'), async (req, res) => {
   } catch (error) {
     console.error('Error calling GPT-3 API:', error);
     return res.status(500).json({ message: 'Error processing resume' });
-  }
+  } 
 
   const extractedSkills = skills.split(',').map(skill => skill.trim());
   res.json({ skills: extractedSkills.join(', ') });
