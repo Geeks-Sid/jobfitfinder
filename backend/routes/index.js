@@ -3,23 +3,28 @@ const multer = require('multer');
 const rateLimit = require('express-rate-limit');
 const pdfParse = require('pdf-parse');
 const axios = require('axios');
+require('dotenv').config();
 
 const app = express();
 
-// Rate limiter to prevent abuse
+// Check for required environment variables
+if (!process.env.SKILL_PROMPT || !process.env.OPENAI_API_KEY) {
+  console.error(!process.env.SKILL_PROMPT ? 'Missing SKILL_PROMPT environment variable' : 'Missing OPENAI_API_KEY environment variable');
+  console.error('Missing required environment variables');
+  process.exit(1);
+}
+
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100
 });
 
-// Apply rate limiter to all requests
-app.use(limiter);
+app.use('/scan', limiter); // Apply rate limiter only to /scan
 
-const storage = multer.memoryStorage(); // Use memory storage for better security
+const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   fileFilter: function (req, file, cb) {
-    // Only allow PDFs
     if (file.mimetype !== 'application/pdf') {
       return cb(new Error('Only PDFs are allowed'));
     }
@@ -28,46 +33,37 @@ const upload = multer({
 });
 
 app.post('/scan', upload.single('resume'), async (req, res) => {
-  if (!req.file || !req.file.buffer) {
-    return res.status(400).json({ message: 'File upload is required' });
-  }
-
-  let parsedText;
   try {
-    parsedText = await pdfParse(req.file.buffer);
-  } catch (error) {
-    console.error('Error parsing PDF:', error);
-    return res.status(400).json({ message: 'Invalid PDF format' });
-  }
+    if (!req.file || !req.file.buffer) {
+      throw new Error('File upload is required');
+    }
 
-  const prompt = `${process.env.SKILL_PROMPT} ${parsedText.text}`;
-  const gpt3Data = {
-    model: "gpt-3.5-turbo",
-    messages: [
-      { role: "system", content: "You are a helpful assistant." },
-      { role: "user", content: prompt },
-    ],
-  };
+    const parsedText = await pdfParse(req.file.buffer);
+    const prompt = `${process.env.SKILL_PROMPT} ${parsedText.text}`;
+    const gpt3Data = {
+      model: process.env.GPT3_MODEL || "gpt-3.5-turbo",
+      messages: [
+        { role: "system", content: "You are a helpful assistant." },
+        { role: "user", content: prompt },
+      ],
+    };
 
-  const apiKey = process.env.OPENAI_API_KEY;
-  const apiUrl = 'https://api.openai.com/v1/chat/completions';
-
-  let skills;
-  try {
-    const gpt3Response = await axios.post(apiUrl, gpt3Data, {
+    const gpt3Response = await axios.post(process.env.OPENAI_API_URL || 'https://api.openai.com/v1/chat/completions', gpt3Data, {
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
       }
+    }).catch(err => {
+      console.error('GPT-3 API Error:', err);
+      throw new Error('GPT-3 API Error');
     });
-    skills = gpt3Response.data.choices[0].text;
-  } catch (error) {
-    console.error('Error calling GPT-3 API:', error);
-    return res.status(500).json({ message: 'Error processing resume' });
-  } 
 
-  const extractedSkills = skills.split(',').map(skill => skill.trim());
-  res.json({ skills: extractedSkills.join(', ') });
+    const skills = gpt3Response.data.choices[0].text;
+    const extractedSkills = skills.split(',').map(skill => skill.trim());
+    res.json({ skills: extractedSkills.join(', ') });
+  } catch (error) {
+    console.error('Error processing resume:', error.message);
+    res.status(500).json({ message: error.message });
+  }
 });
 
 module.exports = app;

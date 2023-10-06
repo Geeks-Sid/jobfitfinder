@@ -1,14 +1,24 @@
 import React, { useState } from 'react';
 import './MainContent.css';
- import axios from 'axios';
+import axios from 'axios';
 
 const MainContent = () => {
   const [isScanning, setIsScanning] = useState(false);
-   const [scanResponse, setScanResponse] = useState(null);
+  const [scanResponse, setScanResponse] = useState(null);
 
   const handleFileUpload = (event) => {
     // Logic for file upload can go here
-    console.log("File uploaded");
+    const file = event.target.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+
+    axios.post('/upload', formData)
+      .then(response => {
+        console.log('File uploaded successfully');
+      })
+      .catch(error => {
+        console.error('Error uploading file:', error);
+      });
   };
 
   const handleScanClick = () => {
@@ -16,16 +26,15 @@ const MainContent = () => {
 
     setIsScanning(true);
     
-    setTimeout(() => {
-      setIsScanning(false);
-       axios.post('/scan')
-         .then(response => {
-           setScanResponse(response.data);
-         })
-         .catch(error => {
-           console.error(error);
-         });
-    }, 3000); // Simulate a 3-second scan operation
+    axios.post('/scan')
+      .then(response => {
+        setScanResponse(response.data);
+        setIsScanning(false);
+      })
+      .catch(error => {
+        console.error(error);
+        setIsScanning(false);
+      });
   };
 
   return (
