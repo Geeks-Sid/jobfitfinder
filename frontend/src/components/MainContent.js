@@ -5,28 +5,20 @@ import axios from 'axios';
 const MainContent = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [scanResponse, setScanResponse] = useState(null);
+  const [formData, setFormData] = useState(null);
 
   const handleFileUpload = (event) => {
-    // Logic for file upload can go here
     const file = event.target.files[0];
-    const formData = new FormData();
-    formData.append('file', file);
-
-    axios.post('/upload', formData)
-      .then(response => {
-        console.log('File uploaded successfully');
-      })
-      .catch(error => {
-        console.error('Error uploading file:', error);
-      });
+    const newFormData = new FormData();
+    newFormData.append('resume', file);
+    setFormData(newFormData);
   };
 
   const handleScanClick = () => {
-    if (isScanning) return;  // Don't re-initiate if already scanning
-
+    if (isScanning || !formData) return;
     setIsScanning(true);
-    
-    axios.post('/scan')
+
+    axios.post('http://localhost:3001/scan', formData)
       .then(response => {
         setScanResponse(response.data);
         setIsScanning(false);
@@ -52,6 +44,6 @@ const MainContent = () => {
       {!isScanning && !scanResponse && <p>Ready to scan.</p>}
     </main>
   );
-}
+};
 
 export default MainContent;
